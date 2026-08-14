@@ -1,0 +1,22 @@
+{
+  "name": "mail-bot",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-08-12",
+  "compatibility_flags": ["nodejs_compat"],
+  "vars": {
+    "FROM_EMAIL": "Mail Bot <bot@5o.vc>",
+    "ALLOWED_USER_IDS": "8463032811",
+    "NOTIFY_ADDRESSES": "",
+    "PUBLIC_URL": "https://mail.5o.vc"
+  },
+  "kv_namespaces": [
+    {
+      "binding": "MAIL_KV",
+      "id": "a0ca1432e3bc47b4a7b00dc684a2c7c9"
+    }
+  ],
+  "workers_dev": true,
+  "triggers": {
+    "crons": ["0 * * * *"]
+  }
+}
