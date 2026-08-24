@@ -96,6 +96,7 @@ export function renderMailViewPage(mail: MailViewRecord): string {
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html {
       height: 100%;
+      overflow-x: hidden;
       -webkit-text-size-adjust: 100%;
     }
     body {
@@ -106,18 +107,25 @@ export function renderMailViewPage(mail: MailViewRecord): string {
       color: #2c2417;
       line-height: 1.6;
       -webkit-font-smoothing: antialiased;
-      display: flex;
+      overflow-x: hidden;
+    }
+    .stage {
+      min-height: 100dvh;
+      display: grid;
+      grid-template-rows: 1fr auto 1fr;
+      justify-items: center;
       align-items: center;
-      justify-content: safe center;
-      padding: clamp(20px, 5vmin, 48px);
-      padding-left: max(clamp(20px, 5vmin, 48px), env(safe-area-inset-left));
-      padding-right: max(clamp(20px, 5vmin, 48px), env(safe-area-inset-right));
-      padding-top: max(clamp(20px, 5vmin, 48px), env(safe-area-inset-top));
-      padding-bottom: max(clamp(20px, 5vmin, 48px), env(safe-area-inset-bottom));
+      padding: clamp(24px, 6vmin, 56px);
+      padding-left: max(clamp(24px, 6vmin, 56px), env(safe-area-inset-left));
+      padding-right: max(clamp(24px, 6vmin, 56px), env(safe-area-inset-right));
+      padding-top: max(clamp(24px, 6vmin, 56px), env(safe-area-inset-top));
+      padding-bottom: max(clamp(24px, 6vmin, 56px), env(safe-area-inset-bottom));
     }
     .page {
-      width: min(100%, 680px);
-      margin: auto;
+      grid-row: 2;
+      width: min(680px, 100%);
+      max-width: 100%;
+      min-width: 0;
     }
     .masthead {
       text-align: center;
@@ -138,6 +146,7 @@ export function renderMailViewPage(mail: MailViewRecord): string {
       font-weight: 700;
       line-height: 1.25;
       letter-spacing: -0.01em;
+      overflow-wrap: anywhere;
       word-break: break-word;
     }
     .byline {
@@ -151,6 +160,11 @@ export function renderMailViewPage(mail: MailViewRecord): string {
       font-size: clamp(13px, 3.2vw, 14px);
       color: #6b5f50;
       text-align: center;
+    }
+    .byline span {
+      max-width: 100%;
+      overflow-wrap: anywhere;
+      word-break: break-word;
     }
     .byline strong {
       color: #2c2417;
@@ -177,18 +191,43 @@ export function renderMailViewPage(mail: MailViewRecord): string {
       background: #fff;
       border: 1px solid #e8e2d9;
       padding: clamp(16px, 4vw, 32px) clamp(14px, 3.5vw, 28px);
+      max-width: 100%;
+      min-width: 0;
+      overflow: hidden;
     }
     .article-inner {
+      max-width: 100%;
+      min-width: 0;
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
     }
     .mail-html {
+      max-width: 100%;
+      min-width: 0;
+      overflow-wrap: anywhere;
+      word-break: break-word;
       line-height: 1.5;
     }
-    .mail-html table { max-width: 100% !important; }
-    .mail-html img { max-width: 100% !important; height: auto !important; }
-    .mail-text {
+    .mail-html table {
+      max-width: 100% !important;
+      width: 100% !important;
+      table-layout: fixed !important;
+    }
+    .mail-html img {
+      max-width: 100% !important;
+      height: auto !important;
+    }
+    .mail-html pre,
+    .mail-html code {
+      max-width: 100%;
       white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .mail-text {
+      max-width: 100%;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
       word-break: break-word;
       font: clamp(13px, 3.2vw, 14px)/1.7 ui-monospace, "Cascadia Code", Consolas, monospace;
       color: #334155;
@@ -216,20 +255,22 @@ export function renderMailViewPage(mail: MailViewRecord): string {
   </style>
 </head>
 <body>
-  <article class="page">
-    <header class="masthead">
-      <div class="masthead-label">Mail · 5o.vc</div>
-      <h1 class="subject">${escHtml(subject)}</h1>
-    </header>
+  <main class="stage">
+    <article class="page">
+      <header class="masthead">
+        <div class="masthead-label">Mail · 5o.vc</div>
+        <h1 class="subject">${escHtml(subject)}</h1>
+      </header>
 
-    <div class="byline">${bylineParts.join("")}</div>
+      <div class="byline">${bylineParts.join("")}</div>
 
-    <div class="divider">正文</div>
+      <div class="divider">正文</div>
 
-    <section class="article">${bodyBlock(mail)}</section>
+      <section class="article">${bodyBlock(mail)}</section>
 
-    <p class="footer-note">— 邮件由 5o.vc 代收 —</p>
-  </article>
+      <p class="footer-note">— 邮件由 5o.vc 代收 —</p>
+    </article>
+  </main>
 </body>
 </html>`;
 }
