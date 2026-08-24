@@ -5,5 +5,5 @@ export function removeReplyKb() {
 }
 
 export function viewMailKb(viewUrl: string) {
-  return new InlineKeyboard().url("📖 查看全文", viewUrl);
+  return new InlineKeyboard().url("📖 查看内容", viewUrl);
 }
