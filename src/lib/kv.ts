@@ -1,4 +1,5 @@
 import type { Env, Session, Subscriber } from "../env";
+import type { MailViewRecord } from "./mailView";
 import { allowedIds } from "./text";
 
 const SESSION_TTL = 30 * 60;
@@ -103,44 +104,14 @@ export async function putLastTo(env: Env, userId: number, to: string): Promise<v
   await env.MAIL_KV.put(`lastto:${userId}`, to);
 }
 
-const TR_MAIL_TTL = 7 * 24 * 3600;
+const MAIL_VIEW_TTL = 7 * 24 * 3600;
 
-export type TranslateMailCache = {
-  body: string;
-  bodyChunk: string;
-  messageMd: string;
-  translatedMd?: string;
-  translatedBody?: string;
-  code?: string | null;
-  from: string;
-  to: string[];
-  copySnippet: string;
-};
-
-export async function putTranslateMail(
-  env: Env,
-  emailId: string,
-  mail: TranslateMailCache,
-): Promise<void> {
-  await env.MAIL_KV.put(`trmail:${emailId}`, JSON.stringify(mail), { expirationTtl: TR_MAIL_TTL });
+export async function putMailView(env: Env, emailId: string, mail: MailViewRecord): Promise<void> {
+  await env.MAIL_KV.put(`mailview:${emailId}`, JSON.stringify(mail), { expirationTtl: MAIL_VIEW_TTL });
 }
 
-export async function patchTranslateMail(
-  env: Env,
-  emailId: string,
-  patch: Partial<TranslateMailCache>,
-): Promise<TranslateMailCache | null> {
-  const cur = await getTranslateMail(env, emailId);
-  if (!cur) return null;
-  const next = { ...cur, ...patch };
-  await putTranslateMail(env, emailId, next);
-  return next;
-}
-
-export async function getTranslateMail(env: Env, emailId: string): Promise<TranslateMailCache | null> {
-  const raw = await env.MAIL_KV.get(`trmail:${emailId}`, "json");
+export async function getMailView(env: Env, emailId: string): Promise<MailViewRecord | null> {
+  const raw = await env.MAIL_KV.get(`mailview:${emailId}`, "json");
   if (!raw || typeof raw !== "object") return null;
-  const m = raw as TranslateMailCache;
-  if (!m.body?.trim() || !m.messageMd?.trim()) return null;
-  return m;
+  return raw as MailViewRecord;
 }

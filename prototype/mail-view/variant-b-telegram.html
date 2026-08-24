@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>B · Telegram 风格</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "PingFang SC", "Helvetica Neue", sans-serif;
+      background: #8eb0c9;
+      min-height: 100vh;
+      padding: 16px;
+    }
+    .phone {
+      max-width: 420px;
+      margin: 0 auto;
+    }
+    .nav {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 4px 16px;
+      color: #fff;
+      font-weight: 600;
+      font-size: 15px;
+      text-shadow: 0 1px 2px rgba(0,0,0,.15);
+    }
+    .nav-icon {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.2);
+      display: grid;
+      place-items: center;
+      font-size: 18px;
+    }
+    .bubble {
+      background: #fff;
+      border-radius: 12px 12px 12px 4px;
+      box-shadow: 0 1px 2px rgba(0,0,0,.12);
+      overflow: hidden;
+    }
+    .bubble-head {
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 600;
+      color: #3390ec;
+      background: rgba(51,144,236,.1);
+      padding: 3px 8px;
+      border-radius: 6px;
+      margin-bottom: 8px;
+    }
+    .subject {
+      font-size: 17px;
+      font-weight: 600;
+      line-height: 1.35;
+      margin-bottom: 10px;
+      color: #000;
+    }
+    .meta {
+      font-size: 13px;
+      color: #707579;
+      line-height: 1.55;
+    }
+    .meta b { color: #000; font-weight: 500; }
+    .body {
+      padding: 0;
+    }
+    .body-inner {
+      overflow-x: auto;
+    }
+    .time-footer {
+      text-align: right;
+      padding: 6px 12px 10px;
+      font-size: 11px;
+      color: #a8b0b8;
+    }
+    .action {
+      margin-top: 10px;
+      padding: 0 0 4px;
+    }
+    .btn {
+      display: block;
+      text-align: center;
+      padding: 12px;
+      color: #3390ec;
+      font-size: 15px;
+      font-weight: 500;
+      text-decoration: none;
+      border-top: 1px solid #f0f0f0;
+    }
+    .hint {
+      text-align: center;
+      margin-top: 16px;
+      font-size: 12px;
+      color: rgba(255,255,255,.75);
+    }
+  </style>
+</head>
+<body>
+  <div class="phone">
+    <div class="nav">
+      <div class="nav-icon">📬</div>
+      <span>邮件助手</span>
+    </div>
+
+    <div class="bubble">
+      <div class="bubble-head">
+        <div class="badge">新邮件</div>
+        <div class="subject">Fwd: 安全提醒</div>
+        <div class="meta">
+          <div><b>发件</b> 9782586@gmail.com</div>
+          <div><b>收件</b> askdhkashjd@5o.vc</div>
+        </div>
+      </div>
+
+      <div class="body">
+        <div class="body-inner">
+          <div style="max-width:560px;margin:0 auto;font-family:Roboto,Arial,sans-serif;color:#202124;padding:12px;">
+            <div style="text-align:center;padding:16px 0 12px;">
+              <svg width="74" height="24" viewBox="0 0 74 24"><path fill="#4285F4" d="M9.24 8.19v2.46h5.88c-.26 1.57-1.67 4.22-5.88 4.22-3.54 0-6.43-2.93-6.43-6.54S5.7 1.79 9.24 1.79c2.01 0 3.37.86 4.15 1.6l2.83-2.73C14.46.89 12.04 0 9.24 0 4.14 0 0 3.87 0 8.64s4.14 8.64 9.24 8.64c5.33 0 8.84-3.75 8.84-9.04 0-.61-.06-1.08-.13-1.54H9.24z"/><path fill="#EA4335" d="M25 6.19c-3.21 0-5.83 2.44-5.83 5.81 0 3.34 2.62 5.81 5.83 5.81 3.21 0 5.83-2.46 5.83-5.81 0-3.37-2.62-5.81-5.83-5.81zm0 9.33c-1.76 0-3.28-1.45-3.28-3.52 0-2.09 1.52-3.52 3.28-3.52 1.76 0 3.28 1.43 3.28 3.52 0 2.07-1.52 3.52-3.28 3.52z"/><path fill="#FBBC05" d="M53.58 6.19c-3.21 0-5.83 2.44-5.83 5.81 0 3.34 2.62 5.81 5.83 5.81 3.21 0 5.83-2.46 5.83-5.81 0-3.37-2.62-5.81-5.83-5.81zm0 9.33c-1.76 0-3.28-1.45-3.28-3.52 0-2.09 1.52-3.52 3.28-3.52 1.76 0 3.28 1.43 3.28 3.52 0 2.07-1.52 3.52-3.28 3.52z"/><path fill="#4285F4" d="M38.66 6.19c-3.21 0-5.83 2.44-5.83 5.81 0 3.34 2.62 5.81 5.83 5.81 3.21 0 5.83-2.46 5.83-5.81 0-3.37-2.62-5.81-5.83-5.81zm0 9.33c-1.76 0-3.28-1.45-3.28-3.52 0-2.09 1.52-3.52 3.28-3.52 1.76 0 3.28 1.43 3.28 3.52 0 2.07-1.52 3.52-3.28 3.52z"/><path fill="#34A853" d="M58.24 6.19v10.34h2.46V6.19H58.24zm1.23-3.54c-.86 0-1.54.68-1.54 1.54s.68 1.54 1.54 1.54 1.54-.68 1.54-1.54-.68-1.54-1.54-1.54z"/><path fill="#EA4335" d="M68.49 15.53l-3.47-4.22 3.32-4.01h-2.89l-2.01 2.58-2.01-2.58h-2.89l3.32 4.01-3.47 4.22h2.89l2.35-2.89 2.35 2.89h2.89z"/></svg>
+            </div>
+            <h2 style="font-size:20px;font-weight:400;text-align:center;margin:0 0 20px;">辅助电话号码发生了变更</h2>
+            <p style="font-size:14px;line-height:1.6;color:#5f6368;margin:0 0 24px;text-align:center;">您的 Google 账号辅助电话号码已更改。如非本人操作，请立即检查。</p>
+            <div style="text-align:center;">
+              <span style="display:inline-block;background:#1a73e8;color:#fff;padding:10px 24px;border-radius:4px;font-size:14px;">查看活动</span>
+            </div>
+          </div>
+        </div>
+        <div class="time-footer">13:25</div>
+      </div>
+    </div>
+
+    <p class="hint">网页版：与 Telegram 推送视觉统一</p>
+  </div>
+</body>
+</html>

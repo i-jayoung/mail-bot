@@ -3,6 +3,8 @@ import { webhookCallback } from "grammy";
 import type { UserFromGetMe } from "grammy/types";
 import { createBot, syncBotCommands } from "./bot/createBot";
 import type { Env } from "./env";
+import { getMailView } from "./lib/kv";
+import { renderMailViewPage } from "./lib/mailView";
 import { handleResendWebhook } from "./resend/webhook";
 
 let cachedBotInfo: UserFromGetMe | undefined;
@@ -10,6 +12,12 @@ let cachedBotInfo: UserFromGetMe | undefined;
 const app = new Hono<{ Bindings: Env }>();
 
 app.get("/", (c) => c.text("mail-bot ok"));
+
+app.get("/mail/:id", async (c) => {
+  const mail = await getMailView(c.env, c.req.param("id"));
+  if (!mail) return c.text("邮件不存在或已过期", 404);
+  return c.html(renderMailViewPage(mail));
+});
 
 async function registerTelegramWebhook(env: Env, dropPending = false): Promise<unknown> {
   const origin = (env.PUBLIC_URL || "https://mail.5o.vc").replace(/\/$/, "");
@@ -20,7 +28,7 @@ async function registerTelegramWebhook(env: Env, dropPending = false): Promise<u
     body: JSON.stringify({
       url: hook,
       secret_token: env.TELEGRAM_WEBHOOK_SECRET,
-      allowed_updates: ["message", "callback_query"],
+      allowed_updates: ["message"],
       drop_pending_updates: dropPending,
     }),
   });

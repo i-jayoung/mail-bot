@@ -1,7 +1,7 @@
 import { Bot, type Context } from "grammy";
 import type { UserFromGetMe } from "grammy/types";
 import type { Env, ReceivedEmail, SendSession, Session } from "../env";
-import { bodyCopySnippet, buildFirstPushMessage, buildMailPushContent, needsFullBodyFile, prefixOf } from "../lib/format";
+import { buildMailPushMessage } from "../lib/format";
 import { md2Bold, md2Code, md2Esc, stripMd2 } from "../lib/md2";
 import {
   addSubscriber,
@@ -10,16 +10,14 @@ import {
   getAllowlist,
   getSession,
   getSubscribers,
-  getTranslateMail,
   mapSent,
-  patchTranslateMail,
+  putMailView,
   putSession,
-  putTranslateMail,
 } from "../lib/kv";
+import { mailViewFromEmail, mailViewUrl } from "../lib/mailView";
 import * as resend from "../lib/resend";
-import { emailBody, isEmail, mailDomain, parseFromAddress, parseSendFrom } from "../lib/text";
-import { isChineseLang, looksNonChinese, translateToChinese } from "../lib/translate";
-import { pushKb, removeReplyKb } from "./keyboards";
+import { isEmail, mailDomain, parseFromAddress, parseSendFrom } from "../lib/text";
+import { removeReplyKb, viewMailKb } from "./keyboards";
 
 export type BotCtx = Context & { env: Env };
 
@@ -93,14 +91,6 @@ async function replyPlain(ctx: BotCtx, text: string) {
   await ctx.reply(text, { reply_markup: removeReplyKb(), ...NO_LINK_PREVIEW });
 }
 
-async function answer(ctx: BotCtx) {
-  try {
-    await ctx.answerCallbackQuery();
-  } catch {
-    /* ignore */
-  }
-}
-
 export async function syncBotCommands(env: Env): Promise<void> {
   if (commandsSynced) return;
   try {
@@ -126,7 +116,7 @@ async function showStart(ctx: BotCtx) {
       "",
       md2Bold("📥 收信"),
       `需要邮箱时填 ${md2Code(`任意前缀@${domain}`)}`,
-      "邮件 / 验证码会推送到这里",
+      "邮件会推送到这里",
       "",
       md2Bold("📤 发信"),
       "① 发正文，例如 " + md2Code("abc"),
@@ -225,140 +215,12 @@ async function cancelWizard(ctx: BotCtx) {
   await replyPlain(ctx, "🚫 已取消。");
 }
 
-async function editTelegramMd2(
-  env: Env,
-  chatId: number,
-  messageId: number,
-  text: string,
-  extra?: { reply_markup?: { inline_keyboard: unknown[] } },
-): Promise<boolean> {
-  const base = {
-    chat_id: chatId,
-    message_id: messageId,
-    link_preview_options: { is_disabled: true },
-    ...extra,
-  };
-  let res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...base, text, parse_mode: "MarkdownV2" }),
-  });
-  if (res.ok) return true;
-  res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/editMessageText`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ...base, text: stripMd2(text) }),
-  });
-  return res.ok;
-}
-
-async function handleTranslateToggle(ctx: BotCtx, emailId: string, toTranslated: boolean) {
-  if (!(await ensureAllowed(ctx.env, ctx.from!.id))) {
-    await ctx.answerCallbackQuery({ text: "无权限", show_alert: true });
-    return;
-  }
-
-  const msg = ctx.callbackQuery?.message;
-  if (!msg || !("message_id" in msg) || !ctx.chat?.id) {
-    await ctx.answerCallbackQuery({ text: "无法编辑此消息", show_alert: true });
-    return;
-  }
-
-  const cached = await getTranslateMail(ctx.env, emailId);
-  if (!cached?.messageMd) {
-    await ctx.answerCallbackQuery({ text: "邮件已过期", show_alert: true });
-    return;
-  }
-
-  if (toTranslated) {
-    await ctx.answerCallbackQuery({ text: "翻译中…" });
-
-    if (!looksNonChinese(cached.bodyChunk || cached.body)) {
-      await ctx.answerCallbackQuery({ text: "正文已是中文", show_alert: true });
-      return;
-    }
-
-    try {
-      let translatedMd = cached.translatedMd;
-      let translatedBody = cached.translatedBody;
-
-      if (!translatedMd || !translatedBody) {
-        const tr = await translateToChinese(cached.bodyChunk || cached.body);
-        if (isChineseLang(tr.sourceLang)) {
-          await ctx.answerCallbackQuery({ text: "正文已是中文", show_alert: true });
-          return;
-        }
-        translatedBody = tr.text;
-        if ((cached.bodyChunk || cached.body).length > 4500) {
-          translatedBody += "\n\n（正文较长，仅翻译前 4500 字）";
-        }
-        translatedMd = buildFirstPushMessage(
-          { from: cached.from, to: cached.to },
-          translatedBody,
-          cached.code ?? null,
-        );
-        await patchTranslateMail(ctx.env, emailId, { translatedMd, translatedBody });
-      }
-
-      const kb = pushKb({
-        body: translatedBody,
-        code: cached.code,
-        emailId,
-        translated: true,
-        translatable: true,
-      });
-      const ok = await editTelegramMd2(ctx.env, ctx.chat.id, msg.message_id, translatedMd!, {
-        reply_markup: { inline_keyboard: kb.inline_keyboard },
-      });
-      if (!ok) await ctx.answerCallbackQuery({ text: "编辑失败，请稍后再试", show_alert: true });
-    } catch (e) {
-      console.error("translate", emailId, e);
-      await ctx.answerCallbackQuery({ text: "翻译失败，请稍后再试", show_alert: true });
-    }
-    return;
-  }
-
-  await ctx.answerCallbackQuery();
-  const kb = pushKb({
-    body: cached.copySnippet,
-    code: cached.code,
-    emailId,
-    translated: false,
-    translatable: true,
-  });
-  const ok = await editTelegramMd2(ctx.env, ctx.chat.id, msg.message_id, cached.messageMd, {
-    reply_markup: { inline_keyboard: kb.inline_keyboard },
-  });
-  if (!ok) await ctx.answerCallbackQuery({ text: "恢复失败，请稍后再试", show_alert: true });
-}
-
 export function createBot(env: Env, botInfo?: UserFromGetMe): Bot<BotCtx> {
   void syncBotCommands(env);
   const bot = new Bot<BotCtx>(env.TELEGRAM_BOT_TOKEN, botInfo ? { botInfo } : {});
   bot.use(async (ctx, next) => {
     ctx.env = env;
     await next();
-  });
-
-  bot.on("callback_query:data", async (ctx) => {
-    const data = ctx.callbackQuery.data;
-    const userId = ctx.from?.id;
-    if (!userId || ctx.chat?.type !== "private") {
-      await answer(ctx);
-      return;
-    }
-
-    if (data.startsWith("tr:")) {
-      await handleTranslateToggle(ctx, data.slice(3), true);
-      return;
-    }
-
-    if (data.startsWith("orig:")) {
-      await handleTranslateToggle(ctx, data.slice(5), false);
-      return;
-    }
-
-    await answer(ctx);
   });
 
   bot.on("message", async (ctx) => {
@@ -459,36 +321,12 @@ async function sendTelegramMd2(
   return res.ok;
 }
 
-async function sendFullBodyFile(env: Env, chatId: number, fullBody: string, name: string): Promise<void> {
-  const form = new FormData();
-  form.append("chat_id", String(chatId));
-  form.append("document", new Blob([fullBody], { type: "text/plain;charset=utf-8" }), name);
-  form.append("caption", "📄 完整正文");
-  const res = await fetch(`https://api.telegram.org/bot${env.TELEGRAM_BOT_TOKEN}/sendDocument`, {
-    method: "POST",
-    body: form,
-  });
-  if (!res.ok) console.error("sendDocument", chatId, await res.text());
-}
-
 export async function notifyInbound(env: Env, email: ReceivedEmail) {
-  const raw = emailBody(email);
-  const { parts, fullBody, bodyChunk, code, truncated } = buildMailPushContent(email, true);
-  const attachFile = needsFullBodyFile(truncated);
-  const fileName = `${prefixOf(email.to)}-mail.txt`;
-  const bodyForTr = fullBody || (raw !== "(没有正文)" ? raw : "");
+  if (!email.id) throw new Error("missing email id");
 
-  if (email.id && bodyForTr && looksNonChinese(bodyForTr) && parts[0]) {
-    await putTranslateMail(env, email.id, {
-      body: bodyForTr,
-      bodyChunk: bodyChunk || bodyForTr,
-      messageMd: parts[0],
-      from: email.from,
-      to: email.to,
-      code,
-      copySnippet: raw,
-    });
-  }
+  await putMailView(env, email.id, mailViewFromEmail(email));
+  const message = buildMailPushMessage(email, true);
+  const kb = viewMailKb(mailViewUrl(env, email.id));
 
   const subs = await getSubscribers(env);
   const allow = await getAllowlist(env);
@@ -498,31 +336,9 @@ export async function notifyInbound(env: Env, email: ReceivedEmail) {
   let sent = 0;
   for (const s of targets) {
     try {
-      let ok = true;
-      for (let i = 0; i < parts.length; i++) {
-        const kb =
-          i === 0
-            ? pushKb({
-                body: raw,
-                code,
-                emailId: email.id,
-                translatable: Boolean(email.id && bodyForTr && looksNonChinese(bodyForTr)),
-              })
-            : undefined;
-        const partOk = await sendTelegramMd2(
-          env,
-          s.chat,
-          parts[i]!,
-          kb ? { reply_markup: { inline_keyboard: kb.inline_keyboard } } : undefined,
-        );
-        if (!partOk) {
-          ok = false;
-          break;
-        }
-      }
-      if (ok && attachFile && fullBody) {
-        await sendFullBodyFile(env, s.chat, fullBody, fileName);
-      }
+      const ok = await sendTelegramMd2(env, s.chat, message, {
+        reply_markup: { inline_keyboard: kb.inline_keyboard },
+      });
       if (ok) sent++;
     } catch (e) {
       console.error("notify fail", s.id, e);
