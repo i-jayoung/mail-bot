@@ -1,9 +1,16 @@
 import type { ReceivedEmail } from "../env";
-import { md2Bold, md2Code } from "./md2";
+import { extractCodeFromEmail } from "./extract";
+import { md2Code, md2Esc, md2Link } from "./md2";
 import { asList, parseFromAddress } from "./text";
 
-function blocks(...parts: Array<string | false | null | undefined>): string {
+/** 段落之间单空行（勿在数组里再插 ""，否则会变成双空行） */
+export function gapLines(...parts: Array<string | false | null | undefined>): string {
   return parts.filter((p): p is string => Boolean(p && p.trim())).join("\n\n");
+}
+
+/** 字段行之间仅换行，不再插空段 */
+export function fieldBlock(...parts: Array<string | false | null | undefined>): string {
+  return parts.filter((p): p is string => Boolean(p && p.trim())).join("\n");
 }
 
 function shortAddr(from: string): string {
@@ -17,12 +24,38 @@ export function prefixOf(to: string[] | string | undefined): string {
   return parseFromAddress(first);
 }
 
-function mailHeader(mail: ReceivedEmail, push: boolean): string {
-  const pfx = prefixOf(mail.to);
-  const title = push ? `📬 新邮件 · ${pfx}` : `📬 ${pfx}`;
-  return blocks(md2Bold(title), `👤 来自 ${md2Code(shortAddr(mail.from))}`);
+/** 两字标签与「验证码」三字对齐 */
+function padLabel(label: string): string {
+  return label.length < 3 ? `${label}\u3000` : label;
 }
 
-export function buildMailPushMessage(mail: Pick<ReceivedEmail, "from" | "to">, push = true): string {
-  return mailHeader(mail as ReceivedEmail, push);
+export function fieldLine(icon: string, label: string, value: string): string {
+  return `${icon} ${md2Esc(padLabel(label))} ${md2Code(value)}`;
+}
+
+export function fieldLinkLine(icon: string, label: string, value: string): string {
+  const url = value.includes("@") ? `mailto:${value}` : value;
+  return `${icon} ${md2Esc(padLabel(label))} ${md2Link(value, url)}`;
+}
+
+function mailHeader(mail: ReceivedEmail): string {
+  const toAddr = prefixOf(mail.to);
+  const from = shortAddr(mail.from);
+  const code = extractCodeFromEmail(mail);
+
+  const blocks: string[] = [
+    fieldLinkLine("👤", "发件", from),
+    fieldLine("📥", "收件", toAddr),
+  ];
+  if (code) blocks.push(fieldLine("🔐", "验证码", code));
+
+  return fieldBlock(...blocks);
+}
+
+export function buildMailPushMessage(
+  mail: Pick<ReceivedEmail, "from" | "to" | "subject" | "text" | "html">,
+  push = true,
+): string {
+  void push;
+  return mailHeader(mail as ReceivedEmail);
 }

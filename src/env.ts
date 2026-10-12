@@ -14,10 +14,16 @@ export type Subscriber = { id: number; chat: number };
 
 export type SendSession = {
   type: "send";
-  step: "from" | "to";
+  step: "from" | "to" | "body" | "confirm";
   body: string;
   from?: string;
   to?: string;
+  subject?: string;
+  /** 确认页标题（发信 / 回复） */
+  confirmLabel?: string;
+  /** 待确认消息，便于发送/取消后删除 */
+  confirmChat?: number;
+  confirmMsg?: number;
   idem?: string;
   expires: number;
 };

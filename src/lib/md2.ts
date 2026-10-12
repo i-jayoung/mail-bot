@@ -19,13 +19,9 @@ export function md2Code(s: string): string {
 
 const URL_RE = /https?:\/\/[^\s<>"')\]]+/gi;
 
-function md2LinkLabel(s: string): string {
-  return s.replace(/[\\\]]/g, (c) => `\\${c}`);
-}
-
 export function md2Link(label: string, url: string): string {
   const safeUrl = url.replace(/[\\)]/g, (c) => `\\${c}`);
-  return `[${md2LinkLabel(label)}](${safeUrl})`;
+  return `[${md2Esc(label)}](${safeUrl})`;
 }
 
 /** Format email/plain body for MarkdownV2: escape text, linkify URLs, keep newlines. */

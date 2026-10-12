@@ -175,6 +175,49 @@ const STOP = new Set([
   "BEFORE",
   "KODUNUZ",
   "KODU",
+  "ACCOUNT",
+  "ACCOUNTS",
+  "PASSWORD",
+  "PASSWORDS",
+  "MOBILE",
+  "CURVE",
+  "ACCESS",
+  "SECURE",
+  "SECURITY",
+  "UPDATE",
+  "RESET",
+  "SIGNIN",
+  "SIGN",
+  "UNSUB",
+  "CLICK",
+  "BUTTON",
+  "VERIFY",
+  "CONFIRM",
+  "WELCOME",
+  "DEAR",
+  "USER",
+  "USERS",
+  "NAME",
+  "HOME",
+  "HELP",
+  "INFO",
+  "NEWS",
+  "TRUE",
+  "FALSE",
+  "NULL",
+  "UNDEFINED",
+  "SPAN",
+  "DIV",
+  "FONT",
+  "STYLE",
+  "TABLE",
+  "IMAGE",
+  "TITLE",
+  "BODY",
+  "HEAD",
+  "META",
+  "LINK",
+  "HREF",
 ]);
 
 function lineContext(line: string): boolean {
@@ -195,22 +238,35 @@ function isLikelyOtp(code: string, hasContext = false): boolean {
 
   if (/^[A-Za-z0-9]+$/.test(c)) {
     if (/^(.)\1+$/i.test(c)) return false;
-    if (/\d/.test(c)) return true;
-    return hasContext && /^[A-Za-z]{4,16}$/.test(c);
+    // 真实 OTP 几乎总是含数字；纯字母多为 Account / Verify 等误匹配
+    if (!/\d/.test(c)) return false;
+    return true;
   }
 
   return false;
 }
 
-function addCandidate(map: Map<string, number>, code: string, score: number, hasContext = false) {
+type CodeCandidate = { score: number; display: string };
+
+function addCandidate(map: Map<string, CodeCandidate>, code: string, score: number, hasContext = false) {
   const c = code.trim();
   if (!isLikelyOtp(c, hasContext)) return;
   const key = c.toUpperCase();
   if (STOP.has(key)) return;
-  map.set(key, Math.max(map.get(key) ?? 0, score));
+  const prev = map.get(key);
+  if (!prev || score > prev.score) map.set(key, { score, display: c });
 }
 
-function scanLabeled(text: string, map: Map<string, number>, boost = 0) {
+function otpTieRank(code: string): number {
+  if (!/^\d+$/.test(code)) return 0;
+  const n = code.length;
+  if (n === 6) return 4;
+  if (n === 8) return 3;
+  if (n >= 4 && n <= 8) return 2;
+  return 1;
+}
+
+function scanLabeled(text: string, map: Map<string, CodeCandidate>, boost = 0) {
   const t = text.replace(/\r\n/g, " ").replace(/\s+/g, " ").trim();
   if (!t) return;
   const ctx = lineContext(t);
@@ -227,7 +283,7 @@ function scanLabeled(text: string, map: Map<string, number>, boost = 0) {
 }
 
 /** 行末、粘连、code 关键词后的 token */
-function scanEmbedded(text: string, map: Map<string, number>, boost = 0) {
+function scanEmbedded(text: string, map: Map<string, CodeCandidate>, boost = 0) {
   const lines = text.replace(/\r\n/g, "\n").split("\n");
   const tokenRe = new RegExp(`\\b(${TOKEN})\\b`, "g");
 
@@ -258,20 +314,20 @@ function scanEmbedded(text: string, map: Map<string, number>, boost = 0) {
       addCandidate(map, gluedMix[1], (ctx ? 85 : 76) + boost, ctx);
     }
 
-    if (line.length <= 24 && !/\s/.test(line)) {
+    if (line.length <= 24 && !/\s/.test(line) && /\d/.test(line)) {
       addCandidate(map, line, (ctx ? 82 : 58) + boost, ctx);
     }
 
     if (ctx) {
       for (const m of line.matchAll(tokenRe)) {
         const tok = m[1];
-        if (tok && tok.length >= 4) addCandidate(map, tok, 68 + boost, true);
+        if (tok && tok.length >= 4 && /\d/.test(tok)) addCandidate(map, tok, 68 + boost, true);
       }
     }
   }
 }
 
-function scanHtml(html: string, map: Map<string, number>) {
+function scanHtml(html: string, map: Map<string, CodeCandidate>) {
   const h = html.trim();
   if (!h) return;
 
@@ -281,7 +337,8 @@ function scanHtml(html: string, map: Map<string, number>) {
   ];
   for (const re of tagPatterns) {
     for (const m of h.matchAll(re)) {
-      if (m[1]) addCandidate(map, m[1], 84, true);
+      const tok = m[1]?.trim();
+      if (tok && /\d/.test(tok)) addCandidate(map, tok, 84, true);
     }
   }
 
@@ -289,22 +346,29 @@ function scanHtml(html: string, map: Map<string, number>) {
   scanEmbedded(htmlToText(h), map, 5);
 }
 
-function pickBest(map: Map<string, number>): string | null {
-  let best: string | null = null;
+function pickBest(map: Map<string, CodeCandidate>): string | null {
+  let bestKey: string | null = null;
   let bestScore = 0;
-  for (const [code, score] of map) {
+  for (const [key, cand] of map) {
+    const score = cand.score;
     const better =
       score > bestScore ||
       (score === bestScore &&
-        best &&
-        /^\d+$/.test(code) &&
-        !/^\d+$/.test(best));
+        bestKey &&
+        (otpTieRank(key) > otpTieRank(bestKey) ||
+          (otpTieRank(key) === otpTieRank(bestKey) &&
+            /^\d+$/.test(key) &&
+            !/^\d+$/.test(bestKey))));
     if (better) {
-      best = code;
+      bestKey = key;
       bestScore = score;
     }
   }
-  return bestScore >= 55 ? best : null;
+  if (bestScore < 58 || !bestKey) return null;
+  const display = map.get(bestKey)?.display ?? null;
+  if (!display) return null;
+  if (!/\d/.test(display) && bestScore < 96) return null;
+  return display;
 }
 
 export type CodeMail = {
@@ -314,7 +378,7 @@ export type CodeMail = {
 };
 
 export function extractCodeFromEmail(mail: CodeMail): string | null {
-  const map = new Map<string, number>();
+  const map = new Map<string, CodeCandidate>();
   const subject = mail.subject?.trim() ?? "";
   const text = mail.text?.trim() ?? "";
   const html = mail.html?.trim() ?? "";

@@ -1,5 +1,5 @@
 import type { Env, ReceivedEmail } from "../env";
-import { emailBody } from "./text";
+import { emailBody, isEmail, parseFromAddress, parseSendFrom } from "./text";
 
 export type MailViewRecord = {
   from: string;
@@ -16,6 +16,21 @@ export function publicOrigin(env: Env): string {
 
 export function mailViewUrl(env: Env, emailId: string): string {
   return `${publicOrigin(env)}/mail/${encodeURIComponent(emailId)}`;
+}
+
+export function replyRouteFromMail(
+  env: Env,
+  mail: MailViewRecord,
+): { from: string; to: string; subject: string } | null {
+  const received = mail.to[0];
+  if (!received) return null;
+  const parsedFrom = parseSendFrom(env.FROM_EMAIL, parseFromAddress(received));
+  if (!parsedFrom.ok) return null;
+  const to = parseFromAddress(mail.from);
+  if (!isEmail(to)) return null;
+  const subj = mail.subject?.trim();
+  const subject = subj ? `Re: ${subj}` : "(无主题)";
+  return { from: parsedFrom.value, to, subject };
 }
 
 export function mailViewFromEmail(email: ReceivedEmail): MailViewRecord {

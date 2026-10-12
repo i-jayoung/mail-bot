@@ -28,7 +28,7 @@ async function registerTelegramWebhook(env: Env, dropPending = false): Promise<u
     body: JSON.stringify({
       url: hook,
       secret_token: env.TELEGRAM_WEBHOOK_SECRET,
-      allowed_updates: ["message"],
+      allowed_updates: ["message", "callback_query"],
       drop_pending_updates: dropPending,
     }),
   });
