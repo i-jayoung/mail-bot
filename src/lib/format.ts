@@ -43,11 +43,10 @@ function mailHeader(mail: ReceivedEmail): string {
   const from = shortAddr(mail.from);
   const code = extractCodeFromEmail(mail);
 
-  const blocks: string[] = [
-    fieldLinkLine("👤", "发件", from),
-    fieldLine("📥", "收件", toAddr),
-  ];
+  // 验证码放首行，桌面/移动端通知预览会先看到码
+  const blocks: string[] = [];
   if (code) blocks.push(fieldLine("🔐", "验证码", code));
+  blocks.push(fieldLine("📥", "收件", toAddr), fieldLinkLine("👤", "发件", from));
 
   return fieldBlock(...blocks);
 }
