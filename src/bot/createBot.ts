@@ -519,7 +519,7 @@ export async function notifyInbound(env: Env, email: ReceivedEmail) {
   if (!email.id) throw new Error("missing email id");
 
   await putMailView(env, email.id, mailViewFromEmail(email));
-  const message = buildMailPushMessage(email, true);
+  const message = buildMailPushMessage(email);
   const kb = inboundMailKb(mailViewUrl(env, email.id), email.id);
 
   const subs = await getSubscribers(env);

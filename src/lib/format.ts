@@ -38,23 +38,17 @@ export function fieldLinkLine(icon: string, label: string, value: string): strin
   return `${icon} ${md2Esc(padLabel(label))} ${md2Link(value, url)}`;
 }
 
-function mailHeader(mail: ReceivedEmail): string {
-  const toAddr = prefixOf(mail.to);
-  const from = shortAddr(mail.from);
-  const code = extractCodeFromEmail(mail);
-
-  // 验证码放首行，桌面/移动端通知预览会先看到码
-  const blocks: string[] = [];
-  if (code) blocks.push(fieldLine("🔐", "验证码", code));
-  blocks.push(fieldLine("📥", "收件", toAddr), fieldLinkLine("👤", "发件", from));
-
-  return fieldBlock(...blocks);
-}
-
+/** 收信 Telegram：验证码 → 收件 → 发件；码与收件为 md2Code 可点复制 */
 export function buildMailPushMessage(
   mail: Pick<ReceivedEmail, "from" | "to" | "subject" | "text" | "html">,
-  push = true,
 ): string {
-  void push;
-  return mailHeader(mail as ReceivedEmail);
+  const m = mail as ReceivedEmail;
+  const toAddr = prefixOf(m.to);
+  const from = shortAddr(m.from);
+  const code = extractCodeFromEmail(m);
+
+  const rows: string[] = [];
+  if (code) rows.push(fieldLine("🔐", "验证码", code));
+  rows.push(fieldLine("📥", "收件", toAddr), fieldLinkLine("👤", "发件", from));
+  return fieldBlock(...rows);
 }
